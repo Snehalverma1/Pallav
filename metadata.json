@@ -1,0 +1,7 @@
+{
+  "name": "EstateAI Manager",
+  "description": "A comprehensive real estate platform featuring an admin panel for property management and AI prompt configuration, and a buyer-facing interface with AI-driven property assistance.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
