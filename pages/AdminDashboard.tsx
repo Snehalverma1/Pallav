@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/Store';
-import { Plus, Edit2, Trash2, MapPin, CheckCircle2, AlertTriangle, RefreshCw, Database, Cloud, UploadCloud, Info, Server, ShieldCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, MapPin, CheckCircle2, AlertTriangle, RefreshCw, Database, Cloud, UploadCloud, Info, Server, ShieldCheck, Sparkles } from 'lucide-react';
 import { connectionStatus, connectionError, firebaseConfig, db } from '../services/firebase';
-import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 
 export const AdminDashboard: React.FC = () => {
   const { properties, navigate, deleteProperty, isOnline, syncLocalToCloud } = useStore();
@@ -12,7 +12,7 @@ export const AdminDashboard: React.FC = () => {
 
   const runConnectionTest = async () => {
     if (!db) {
-        setTestResult({status: 'fail', message: 'Firestore object is null. Ensure you updated services/firebase.ts with your own API keys.'});
+        setTestResult({status: 'fail', message: 'Firestore object is null. Ensure you updated services/firebase.ts.'});
         return;
     }
     setTestResult({status: 'testing'});
@@ -22,26 +22,32 @@ export const AdminDashboard: React.FC = () => {
             message: 'Connectivity test'
         });
         await deleteDoc(doc(db, '_connection_test', testRef.id));
-        setTestResult({status: 'success', message: 'Perfect! Your database is reachable and permissions are correct.'});
+        setTestResult({status: 'success', message: 'Perfect! Database is reachable.'});
     } catch (err: any) {
         let msg = err.message;
         if (msg.includes('permission-denied')) {
-            msg = "Rules Error: Your Firestore Rules are blocking access. Go to Firestore > Rules and set 'allow read, write: if true;'.";
+            msg = "Rules Error: Set 'allow read, write: if true;' in Firebase Console.";
         } else if (msg.includes('not-found')) {
-            msg = "Service Error: Database not provisioned. Click 'Create Database' in the Firebase Console.";
+            msg = "Service Error: Firestore service not enabled.";
         }
         setTestResult({status: 'fail', message: msg});
     }
   };
 
-  const handleSync = async () => {
+  const handleMagicInitialize = async () => {
+    if (!db || !isOnline) return;
     setIsSyncing(true);
     try {
-      await syncLocalToCloud();
-      alert("Success! Cloud database updated.");
-      window.location.reload(); 
-    } catch (err) {
-      alert("Sync failed. Check your Firebase Rules.");
+      const snapshot = await getDocs(collection(db, 'properties'));
+      if (snapshot.empty) {
+        await syncLocalToCloud();
+        alert("Database initialized with demo data!");
+      } else {
+        alert("Database already contains properties.");
+      }
+      window.location.reload();
+    } catch (e) {
+      alert("Initialization failed. Check your Firebase Rules.");
     } finally {
       setIsSyncing(false);
     }
@@ -63,37 +69,35 @@ export const AdminDashboard: React.FC = () => {
                     <AlertTriangle size={12}/> Offline Mode
                 </div>
             )}
-            <span className="text-slate-400 text-[10px] font-mono uppercase bg-slate-100 px-2 py-1 rounded">ID: {firebaseConfig.projectId}</span>
+            <span className="text-slate-400 text-[10px] font-mono uppercase bg-slate-100 px-2 py-1 rounded">Project ID: {firebaseConfig.projectId}</span>
           </div>
         </div>
         
-        <button
-          onClick={() => navigate({ name: 'ADMIN_EDIT', propertyId: null })}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-blue-200 transition-all active:scale-95"
-        >
-          <Plus size={20} /> Create New Listing
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleMagicInitialize}
+            disabled={isSyncing || connectionStatus !== 'connected'}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all"
+          >
+            <Sparkles size={18} /> One-Click Initialize
+          </button>
+          <button
+            onClick={() => navigate({ name: 'ADMIN_EDIT', propertyId: null })}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-blue-200 transition-all active:scale-95"
+          >
+            <Plus size={20} /> Create Listing
+          </button>
+        </div>
       </div>
 
-      {/* Database Diagnostic Card - Always show if not connected or test failed */}
+      {/* Database Diagnostic Tool */}
       {(connectionStatus !== 'connected' || testResult.status !== 'success') && (
         <div className="bg-white border-2 border-slate-200 rounded-[2rem] p-8 mb-10 shadow-sm overflow-hidden relative">
-           <div className="absolute top-0 right-0 p-6 opacity-5">
-              <Database size={120} />
-           </div>
-           
            <div className="relative z-10">
               <div className="flex items-center gap-3 mb-4">
                  <div className="p-2 bg-slate-900 rounded-lg text-white"><Server size={20} /></div>
                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">Database Connection Tool</h3>
               </div>
-              
-              <p className="text-slate-500 mb-8 max-w-2xl text-sm font-medium">
-                {connectionStatus !== 'connected' 
-                  ? "Your app is currently saving data only to your browser (Local Storage). To use the Cloud, update your Firebase Config." 
-                  : "Database object initialized. Let's test if we can actually read/write to it."}
-              </p>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                   <div className="space-y-4">
                       {testResult.status === 'idle' ? (
@@ -117,7 +121,7 @@ export const AdminDashboard: React.FC = () => {
                                         {testResult.status === 'testing' ? 'Contacting Servers...' : 
                                          testResult.status === 'success' ? 'Connection OK' : 'Cloud Error'}
                                     </p>
-                                    <p className="font-medium leading-relaxed">{testResult.message || 'Running diagnostic...'}</p>
+                                    <p className="font-medium">{testResult.message}</p>
                                     {testResult.status !== 'testing' && (
                                         <button onClick={() => setTestResult({status: 'idle'})} className="mt-3 text-[10px] font-black underline uppercase">Try Again</button>
                                     )}
@@ -125,27 +129,13 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
                       )}
-
-                      {testResult.status === 'success' && (
-                        <button 
-                          onClick={handleSync}
-                          disabled={isSyncing}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
-                        >
-                          {isSyncing ? <RefreshCw className="animate-spin" /> : <UploadCloud />}
-                          {isSyncing ? 'Processing...' : 'Sync Local Data to Cloud'}
-                        </button>
-                      )}
                   </div>
-
                   <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                     <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
-                        <Info size={16} className="text-slate-400" /> Troubleshoot Checklist
-                     </h4>
-                     <ul className="space-y-3 text-xs font-medium text-slate-500">
-                        <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1"></div> 1. Copy config from Firebase Project Settings.</li>
-                        <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1"></div> 2. Click "Create Database" in Firestore tab.</li>
-                        <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1"></div> 3. Rules: <b>allow read, write: if true;</b></li>
+                     <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2"><Info size={16} /> Troubleshoot</h4>
+                     <ul className="space-y-2 text-xs font-medium text-slate-500">
+                        <li>• Copy config from Firebase Project Settings.</li>
+                        <li>• Click "Create Database" in Firestore tab.</li>
+                        <li>• Set Rules: <b>allow read, write: if true;</b></li>
                      </ul>
                   </div>
               </div>
@@ -155,13 +145,13 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Listings Grid */}
       <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <Database size={20} className="text-slate-400" /> Active Property Listings
+        <Database size={20} className="text-slate-400" /> Active Property Listings ({properties.length})
       </h3>
       
       {properties.length === 0 ? (
         <div className="py-24 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
             <Cloud size={48} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-400 font-bold">No properties found. Create your first one above!</p>
+            <p className="text-slate-400 font-bold">No properties found. Use "One-Click Initialize" to add demo data.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
