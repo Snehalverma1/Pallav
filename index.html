@@ -4,31 +4,154 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EstateAI Manager</title>
+    <title>EstateAI | Ultra Luxury Real Estate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
+      
+      * { font-family: 'Plus Jakarta Sans', sans-serif; }
+      
+      /* Hide real cursor only when app is likely loaded */
+      .app-ready * { cursor: none !important; }
+      
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      body { margin: 0; padding: 0; overflow: hidden; background: #f8fafc; }
-      #root { height: 100vh; width: 100vw; }
+      body { margin: 0; padding: 0; overflow-x: hidden; background: #020617; scroll-behavior: smooth; }
+      #root { min-height: 100vh; width: 100vw; position: relative; z-index: 10; }
+      
+      /* Perspective for 3D Animations */
+      .perspective-1000 { perspective: 1000px; }
+      
+      /* Mesh Gradient Animation */
+      .mesh-bg {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
+        z-index: 0;
+      }
+      .blob {
+        position: absolute;
+        width: 800px; height: 800px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
+        filter: blur(150px);
+        border-radius: 50%;
+        opacity: 0.2;
+        pointer-events: none;
+        animation: rotate-blob 25s linear infinite;
+      }
+      @keyframes rotate-blob {
+        from { transform: rotate(0deg) translate(50px) rotate(0deg); }
+        to { transform: rotate(360deg) translate(50px) rotate(-360deg); }
+      }
+
+      .animate-spin-slow {
+        animation: spin 8s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* Custom Cursor */
+      #cursor {
+        width: 12px; height: 12px;
+        background: white;
+        border-radius: 50%;
+        position: fixed;
+        pointer-events: none;
+        z-index: 9999;
+        mix-blend-mode: difference;
+        display: none;
+      }
+      #cursor-follower {
+        width: 40px; height: 40px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        position: fixed;
+        pointer-events: none;
+        z-index: 9998;
+        display: none;
+      }
     </style>
-  <script type="importmap">
+    <script>
+      // Polyfill process.env for browser environment
+      window.process = window.process || { env: { API_KEY: "" } };
+    </script>
+    <script type="importmap">
 {
   "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
+    "framer-motion": "https://esm.sh/framer-motion@11.11.11?external=react,react-dom",
+    "gsap": "https://esm.sh/gsap@3.12.5",
+    "gsap/ScrollTrigger": "https://esm.sh/gsap@3.12.5/ScrollTrigger",
+    "@google/genai": "https://esm.sh/@google/genai@1.33.0",
+    "firebase/app": "https://esm.sh/firebase@11.1.0/app",
+    "firebase/firestore": "https://esm.sh/firebase@11.1.0/firestore",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "vite": "https://esm.sh/vite@^7.3.0",
     "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "gsap/": "https://esm.sh/gsap@^3.14.2/",
+    "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
-</head>
+  </head>
   <body>
+    <div class="mesh-bg">
+      <div class="blob" style="top: -20%; left: -20%;"></div>
+      <div class="blob" style="bottom: -20%; right: -20%; background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);"></div>
+    </div>
+    <div id="cursor"></div>
+    <div id="cursor-follower"></div>
     <div id="root"></div>
+    <script type="module">
+      const cursor = document.getElementById('cursor');
+      const follower = document.getElementById('cursor-follower');
+      const html = document.documentElement;
+      
+      let mouseX = 0, mouseY = 0;
+      let cursorX = 0, cursorY = 0;
+      let followerX = 0, followerY = 0;
+      let hasMoved = false;
+
+      document.addEventListener('mousemove', (e) => {
+        if (!hasMoved) {
+          hasMoved = true;
+          cursor.style.display = 'block';
+          follower.style.display = 'block';
+          html.classList.add('app-ready');
+        }
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      function animate() {
+        cursorX += (mouseX - cursorX) * 0.2;
+        cursorY += (mouseY - cursorY) * 0.2;
+        followerX += (mouseX - followerX) * 0.1;
+        followerY += (mouseY - followerY) * 0.1;
+
+        cursor.style.transform = `translate3d(${cursorX - 6}px, ${cursorY - 6}px, 0)`;
+        follower.style.transform = `translate3d(${followerX - 20}px, ${followerY - 20}px, 0)`;
+
+        requestAnimationFrame(animate);
+      }
+      animate();
+
+      document.addEventListener('mousedown', () => {
+        cursor.style.transition = 'transform 0.1s ease-out';
+        cursor.style.transform += ' scale(2.5)';
+        follower.style.transform += ' scale(0.5)';
+      });
+      document.addEventListener('mouseup', () => {
+        cursor.style.transform = cursor.style.transform.replace(' scale(2.5)', '');
+        follower.style.transform = follower.style.transform.replace(' scale(0.5)', '');
+      });
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
