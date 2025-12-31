@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/Store';
-import { Plus, Edit2, Trash2, MapPin, CheckCircle2, AlertTriangle, RefreshCw, Database, Cloud, UploadCloud, Info, Server, ShieldCheck, Sparkles } from 'lucide-react';
-import { connectionStatus, connectionError, firebaseConfig, db } from '../services/firebase';
+import { Plus, Edit2, Trash2, MapPin, CheckCircle2, AlertTriangle, RefreshCw, Database, Cloud, UploadCloud, Info, Server, ShieldCheck, Sparkles, ExternalLink, Code } from 'lucide-react';
+import { connectionStatus, connectionError, firebaseConfig, db, isConfigured } from '../services/firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 
 export const AdminDashboard: React.FC = () => {
@@ -12,7 +12,7 @@ export const AdminDashboard: React.FC = () => {
 
   const runConnectionTest = async () => {
     if (!db) {
-        setTestResult({status: 'fail', message: 'Firestore object is null. Ensure you updated services/firebase.ts.'});
+        setTestResult({status: 'fail', message: 'Database is not initialized. Please update services/firebase.ts.'});
         return;
     }
     setTestResult({status: 'testing'});
@@ -22,13 +22,13 @@ export const AdminDashboard: React.FC = () => {
             message: 'Connectivity test'
         });
         await deleteDoc(doc(db, '_connection_test', testRef.id));
-        setTestResult({status: 'success', message: 'Perfect! Database is reachable.'});
+        setTestResult({status: 'success', message: 'Success! Your database is working perfectly.'});
     } catch (err: any) {
         let msg = err.message;
         if (msg.includes('permission-denied')) {
-            msg = "Rules Error: Set 'allow read, write: if true;' in Firebase Console.";
+            msg = "Rules Error: Your database is locked. Go to Firestore > Rules and set 'allow read, write: if true;'.";
         } else if (msg.includes('not-found')) {
-            msg = "Service Error: Firestore service not enabled.";
+            msg = "Database Missing: Go to Firebase Console and click 'Create Database' in the Firestore section.";
         }
         setTestResult({status: 'fail', message: msg});
     }
@@ -41,9 +41,9 @@ export const AdminDashboard: React.FC = () => {
       const snapshot = await getDocs(collection(db, 'properties'));
       if (snapshot.empty) {
         await syncLocalToCloud();
-        alert("Database initialized with demo data!");
+        alert("Database initialized with professional demo data!");
       } else {
-        alert("Database already contains properties.");
+        alert("Database already contains properties. No changes made.");
       }
       window.location.reload();
     } catch (e) {
@@ -60,26 +60,26 @@ export const AdminDashboard: React.FC = () => {
         <div>
           <h2 className="text-4xl font-black text-slate-900 tracking-tight">Manager Dashboard</h2>
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            {connectionStatus === 'connected' ? (
+            {isConfigured && connectionStatus === 'connected' ? (
                 <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-xs font-bold">
-                    <CheckCircle2 size={12}/> Firebase Connected
+                    <CheckCircle2 size={12}/> Cloud Database Active
                 </div>
             ) : (
-                <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-100 px-3 py-1 rounded-full text-xs font-bold">
-                    <AlertTriangle size={12}/> Offline Mode
+                <div className="flex items-center gap-1.5 text-orange-600 bg-orange-50 border border-orange-100 px-3 py-1 rounded-full text-xs font-bold">
+                    <AlertTriangle size={12}/> Demo / Local Mode
                 </div>
             )}
-            <span className="text-slate-400 text-[10px] font-mono uppercase bg-slate-100 px-2 py-1 rounded">Project ID: {firebaseConfig.projectId}</span>
+            {isConfigured && <span className="text-slate-400 text-[10px] font-mono uppercase bg-slate-100 px-2 py-1 rounded">Project: {firebaseConfig.projectId}</span>}
           </div>
         </div>
         
         <div className="flex gap-3">
           <button
             onClick={handleMagicInitialize}
-            disabled={isSyncing || connectionStatus !== 'connected'}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all"
+            disabled={isSyncing || !isConfigured}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-30 transition-all"
           >
-            <Sparkles size={18} /> One-Click Initialize
+            <Sparkles size={18} /> Push Demo Data
           </button>
           <button
             onClick={() => navigate({ name: 'ADMIN_EDIT', propertyId: null })}
@@ -90,68 +90,82 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Database Diagnostic Tool */}
-      {(connectionStatus !== 'connected' || testResult.status !== 'success') && (
-        <div className="bg-white border-2 border-slate-200 rounded-[2rem] p-8 mb-10 shadow-sm overflow-hidden relative">
-           <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="p-2 bg-slate-900 rounded-lg text-white"><Server size={20} /></div>
-                 <h3 className="text-xl font-bold text-slate-900 tracking-tight">Database Connection Tool</h3>
+      {/* SETUP WIZARD (Only shows if config is missing or failing) */}
+      {(!isConfigured || testResult.status === 'fail') && (
+        <div className="bg-white border-4 border-blue-100 rounded-[2.5rem] p-8 mb-10 shadow-2xl overflow-hidden">
+           <div className="flex items-start gap-6">
+              <div className="hidden md:flex p-4 bg-blue-600 rounded-3xl text-white">
+                 <Database size={40} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                  <div className="space-y-4">
-                      {testResult.status === 'idle' ? (
-                        <button 
-                          onClick={runConnectionTest}
-                          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-slate-200 transition-all"
-                        >
-                          <RefreshCw size={18} /> Test Firebase Connectivity
-                        </button>
-                      ) : (
-                        <div className={`p-5 rounded-2xl border-2 ${
-                            testResult.status === 'testing' ? 'bg-slate-50 border-slate-100' :
-                            testResult.status === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
-                            'bg-rose-50 border-rose-100 text-rose-800'
-                        }`}>
-                            <div className="flex gap-3">
-                                {testResult.status === 'testing' ? <RefreshCw className="animate-spin shrink-0" size={18}/> : 
-                                 testResult.status === 'success' ? <CheckCircle2 className="shrink-0" size={18}/> : <AlertTriangle className="shrink-0" size={18}/>}
-                                <div className="text-sm">
-                                    <p className="font-bold mb-1 uppercase tracking-wider text-[10px]">
-                                        {testResult.status === 'testing' ? 'Contacting Servers...' : 
-                                         testResult.status === 'success' ? 'Connection OK' : 'Cloud Error'}
-                                    </p>
-                                    <p className="font-medium">{testResult.message}</p>
-                                    {testResult.status !== 'testing' && (
-                                        <button onClick={() => setTestResult({status: 'idle'})} className="mt-3 text-[10px] font-black underline uppercase">Try Again</button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                      )}
-                  </div>
-                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                     <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2"><Info size={16} /> Troubleshoot</h4>
-                     <ul className="space-y-2 text-xs font-medium text-slate-500">
-                        <li>• Copy config from Firebase Project Settings.</li>
-                        <li>• Click "Create Database" in Firestore tab.</li>
-                        <li>• Set Rules: <b>allow read, write: if true;</b></li>
-                     </ul>
-                  </div>
+              <div className="flex-1">
+                 <h3 className="text-2xl font-black text-slate-900 mb-2">Connect Your Database (Free)</h3>
+                 <p className="text-slate-500 mb-6 font-medium">Follow these 3 steps to make your website live and permanent.</p>
+                 
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                       <div className="text-blue-600 font-black text-xl mb-2">01</div>
+                       <h4 className="font-bold text-slate-800 mb-2">Get API Keys</h4>
+                       <p className="text-xs text-slate-500 leading-relaxed mb-4">Go to Firebase Console, create a project, and add a Web App.</p>
+                       <a href="https://console.firebase.google.com/" target="_blank" className="text-blue-600 text-xs font-bold flex items-center gap-1 hover:underline">
+                          Firebase Console <ExternalLink size={12}/>
+                       </a>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                       <div className="text-blue-600 font-black text-xl mb-2">02</div>
+                       <h4 className="font-bold text-slate-800 mb-2">Unlock Rules</h4>
+                       <p className="text-xs text-slate-500 leading-relaxed mb-4">In "Firestore Database", click "Rules" tab. Paste this:</p>
+                       <code className="block bg-slate-900 text-blue-300 p-2 rounded text-[10px] font-mono">
+                          allow read, write: if true;
+                       </code>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                       <div className="text-blue-600 font-black text-xl mb-2">03</div>
+                       <h4 className="font-bold text-slate-800 mb-2">Update Code</h4>
+                       <p className="text-xs text-slate-500 leading-relaxed mb-4">Paste your keys into <span className="font-mono bg-slate-200 px-1">services/firebase.ts</span>.</p>
+                       <button 
+                         onClick={runConnectionTest}
+                         className="mt-3 w-full bg-slate-900 text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+                       >
+                         {testResult.status === 'testing' ? <RefreshCw className="animate-spin" size={14}/> : <CheckCircle2 size={14}/>}
+                         Test Connection
+                       </button>
+                    </div>
+                 </div>
+
+                 {testResult.status === 'fail' && (
+                    <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-700">
+                       <AlertTriangle size={20} className="shrink-0" />
+                       <p className="text-sm font-bold">Error: {testResult.message}</p>
+                    </div>
+                 )}
               </div>
            </div>
         </div>
       )}
 
       {/* Listings Grid */}
-      <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <Database size={20} className="text-slate-400" /> Active Property Listings ({properties.length})
-      </h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <Database size={20} className="text-slate-400" /> Active Listings ({properties.length})
+        </h3>
+        {!isConfigured && (
+            <span className="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+                ⚠️ DATA NOT SAVING TO CLOUD
+            </span>
+        )}
+      </div>
       
       {properties.length === 0 ? (
         <div className="py-24 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
             <Cloud size={48} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-400 font-bold">No properties found. Use "One-Click Initialize" to add demo data.</p>
+            <p className="text-slate-400 font-bold mb-4">No properties found.</p>
+            {isConfigured && (
+                <button onClick={handleMagicInitialize} className="text-blue-600 font-bold hover:underline">
+                    Load Demo Data Now
+                </button>
+            )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
