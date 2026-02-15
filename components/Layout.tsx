@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/Store';
-import { Building2, Home, LayoutGrid, Info, Mail, ShieldCheck, Menu, X } from 'lucide-react';
+import { Building2, Home, Search, LayoutGrid, Settings, User, LogOut, Bot, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LayoutProps {
@@ -9,110 +8,126 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { navigate, view, isAuthenticated } = useStore();
-  const [isOpen, setIsOpen] = useState(false);
+  const { navigate, view, isAuthenticated, currentUser, logout } = useStore();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToSection = (id: string) => {
-    if (view.name !== 'USER_GALLERY') {
-      navigate({ name: 'USER_GALLERY' });
-      setTimeout(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-    } else {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    }
-    setIsOpen(false);
-  };
-
-  const navItems = [
-    { name: 'Surface', icon: Home, id: 'home' },
-    { name: 'Manifesto', icon: Info, id: 'about' },
-    { name: 'Vault', icon: LayoutGrid, id: 'properties' },
-    { name: 'Initiate', icon: Mail, id: 'contact' },
+  const tabs = [
+    { name: 'Home', icon: Home, view: 'USER_GALLERY', id: 'home' },
+    { name: 'Vault', icon: Search, view: 'USER_GALLERY', id: 'properties' },
+    { name: 'Assistant', icon: Bot, view: 'USER_GALLERY', id: 'assistant' },
+    { name: 'Terminal', icon: Settings, view: 'ADMIN_DASHBOARD', id: 'admin' },
   ];
 
+  const handleTabClick = (tab: typeof tabs[0]) => {
+    if (tab.id === 'assistant') {
+      // Logic for assistant handled by GlobalGuide
+      const event = new CustomEvent('open-assistant');
+      window.dispatchEvent(event);
+      return;
+    }
+    
+    if (tab.view === 'ADMIN_DASHBOARD') {
+      navigate({ name: 'ADMIN_DASHBOARD' });
+    } else {
+      if (view.name !== 'USER_GALLERY') {
+        navigate({ name: 'USER_GALLERY' });
+      }
+      setTimeout(() => {
+        document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  const isActive = (tabId: string) => {
+    if (tabId === 'home' && view.name === 'USER_GALLERY') return true;
+    if (tabId === 'admin' && view.name.startsWith('ADMIN')) return true;
+    return false;
+  };
+
   return (
-    <div className="min-h-screen bg-transparent relative">
-      {/* Floating Header Nav */}
-      <nav className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-5xl transition-all duration-500 ${scrolled ? 'top-4' : 'top-8'}`}>
-        <motion.div 
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-slate-950/40 backdrop-blur-3xl border border-white/10 rounded-full px-10 py-5 flex items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/5"
-        >
-          <div className="flex items-center gap-4 cursor-pointer group" onClick={() => navigate({ name: 'USER_GALLERY' })}>
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:rotate-[360deg] transition-transform duration-1000 shadow-2xl">
-              <Building2 size={24} className="text-slate-950" />
+    <div className="min-h-screen flex flex-col bg-transparent relative pb-24">
+      
+      {/* Top App Bar */}
+      <header className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${scrolled ? 'bg-slate-950/80 backdrop-blur-xl border-b border-white/5 py-3' : 'bg-transparent py-6'}`}>
+        <div className="max-w-xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3" onClick={() => navigate({ name: 'USER_GALLERY' })}>
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-lg">
+              <Building2 size={18} className="text-slate-950" />
             </div>
-            <span className="text-white font-black tracking-tighter text-2xl group-hover:text-blue-400 transition-colors">EstateAI</span>
+            <span className="text-white font-black tracking-tighter text-lg">EstateAI</span>
           </div>
 
-          <div className="hidden lg:flex items-center gap-12">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="text-slate-400 hover:text-white font-black text-xs uppercase tracking-[0.3em] transition-all relative group"
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <button 
+                onClick={logout}
+                className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors"
               >
-                {item.name}
-                <span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all duration-500 group-hover:w-full shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                <LogOut size={16} />
               </button>
-            ))}
+            ) : (
+              <button 
+                onClick={() => navigate({ name: 'ADMIN_DASHBOARD' })}
+                className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-blue-400"
+              >
+                <User size={18} />
+              </button>
+            )}
           </div>
+        </div>
+      </header>
 
-          <div className="flex items-center gap-6">
-             <button 
-               onClick={() => navigate({ name: 'ADMIN_DASHBOARD' })}
-               className="group relative bg-white/5 hover:bg-blue-600 border border-white/10 text-white px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all overflow-hidden"
-             >
-               <span className="relative z-10">{isAuthenticated ? 'Terminal' : 'Auth'}</span>
-               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-             </button>
-             <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden text-white p-2 bg-white/5 rounded-xl">
-                {isOpen ? <X /> : <Menu />}
-             </button>
-          </div>
-        </motion.div>
-      </nav>
-
-      {/* Mobile Fullscreen Nav Overlay */}
-      <AnimatePresence>
-        {isOpen && (
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-xl mx-auto px-0 md:px-4 mt-20">
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, clipPath: 'circle(0% at 50% 50%)' }}
-            animate={{ opacity: 1, clipPath: 'circle(150% at 50% 50%)' }}
-            exit={{ opacity: 0, clipPath: 'circle(0% at 50% 50%)' }}
-            className="fixed inset-0 z-[90] bg-slate-950/98 backdrop-blur-3xl flex flex-col items-center justify-center gap-12"
+            key={view.name + (view.name === 'USER_PROPERTY' ? view.propertyId : '')}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
           >
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="text-white text-6xl md:text-8xl font-black tracking-tighter hover:text-blue-400 transition-all transform hover:scale-110"
-              >
-                {item.name}
-              </button>
-            ))}
-            <button 
-              onClick={() => { setIsOpen(false); navigate({ name: 'ADMIN_DASHBOARD' }); }}
-              className="mt-8 text-blue-400 font-black text-xs uppercase tracking-[0.5em] border border-blue-400/20 px-8 py-4 rounded-full"
-            >
-              Control Center
-            </button>
+            {children}
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="relative z-10">
-        {children}
+        </AnimatePresence>
       </main>
+
+      {/* Android-Style Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-slate-950/90 backdrop-blur-2xl border-t border-white/5 px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-xl mx-auto flex justify-between items-center">
+          {tabs.map((tab) => {
+            const active = isActive(tab.id);
+            const Icon = tab.icon;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab)}
+                className={`flex flex-col items-center gap-1 min-w-[64px] transition-all relative ${active ? 'text-blue-400' : 'text-slate-500'}`}
+              >
+                <div className={`p-2 rounded-2xl transition-all ${active ? 'bg-blue-500/10' : ''}`}>
+                  <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${active ? 'opacity-100' : 'opacity-60'}`}>
+                  {tab.name}
+                </span>
+                {active && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute -top-3 w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 };

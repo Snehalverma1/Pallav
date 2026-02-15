@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Property, ViewState, User } from '../types';
-// Fixed: Removed non-existent export 'isConfigured' from firebase service
-import { db, connectionStatus } from '../services/firebase';
+import { Property, ViewState, User as UserCreds } from '../types';
+import { db, auth, connectionStatus } from '../services/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User } from 'firebase/auth';
 
 interface StoreContextType {
   view: ViewState;
@@ -16,10 +15,13 @@ interface StoreContextType {
   syncLocalToCloud: () => Promise<void>;
   
   // Auth
+  currentUser: User | null;
   isAuthenticated: boolean;
-  login: (u: User) => boolean;
-  logout: () => void;
+  login: (u: UserCreds) => Promise<void>;
+  register: (u: UserCreds) => Promise<void>;
+  logout: () => Promise<void>;
   authError: string | null;
+  isAuthenticating: boolean;
   
   // System Status
   isOnline: boolean;
@@ -61,10 +63,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [view, setView] = useState<ViewState>({ name: 'USER_GALLERY' });
   const [properties, setProperties] = useState<Property[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('estate_is_authenticated') === 'true';
-  });
+  
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
+
+  // Auth State Listener
+  useEffect(() => {
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setCurrentUser(user);
+        setIsAuthenticated(!!user);
+        setIsAuthenticating(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setIsAuthenticating(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (connectionStatus === 'connected' && db) {
@@ -97,20 +114,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [properties, dataLoaded]);
 
-  useEffect(() => {
-    localStorage.setItem('estate_is_authenticated', String(isAuthenticated));
-  }, [isAuthenticated]);
-
   const syncLocalToCloud = async () => {
     if (connectionStatus !== 'connected' || !db) return;
     
-    // Get all local properties
     const localSaved = localStorage.getItem('estate_properties');
     if (!localSaved) return;
     
     const localProps: Property[] = JSON.parse(localSaved);
-    
-    // Check what's already in the cloud to avoid duplicates if possible
     const querySnapshot = await getDocs(collection(db, 'properties'));
     const existingTitles = querySnapshot.docs.map(d => d.data().title);
 
@@ -121,7 +131,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
     
-    // Clear local storage to avoid confusion
     localStorage.removeItem('estate_properties');
   };
 
@@ -132,7 +141,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         await addDoc(collection(db, 'properties'), data);
       } catch (e) {
         console.error("Cloud Error:", e);
-        alert("Permission Denied: Did you set your Firestore Rules to 'allow read, write: if true;'?");
+        alert("Permission Denied: Ensure you are logged in or set Firestore Rules to allow access.");
       }
     } else {
       setProperties(prev => [...prev, p]);
@@ -163,24 +172,49 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const getProperty = (id: string) => properties.find(p => p.id === id);
 
-  const login = (credentials: User): boolean => {
-    if (credentials.email === 'admin@estate.ai' && credentials.password === 'secure_admin_only') {
-      setIsAuthenticated(true);
-      return true;
+  const login = async (credentials: UserCreds) => {
+    if (!auth) return;
+    setAuthError(null);
+    setIsAuthenticating(true);
+    try {
+      await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+    } catch (e: any) {
+      setAuthError(e.message || "Failed to sign in.");
+      throw e;
+    } finally {
+      setIsAuthenticating(false);
     }
-    setAuthError("Invalid credentials.");
-    return false;
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    navigate({ name: 'USER_GALLERY' });
+  const register = async (credentials: UserCreds) => {
+    if (!auth) return;
+    setAuthError(null);
+    setIsAuthenticating(true);
+    try {
+      await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    } catch (e: any) {
+      setAuthError(e.message || "Failed to create account.");
+      throw e;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const logout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      navigate({ name: 'USER_GALLERY' });
+    } catch (e) {
+      console.error("Logout Error:", e);
+    }
   };
 
   return (
     <StoreContext.Provider value={{ 
       view, navigate, properties, addProperty, updateProperty, deleteProperty, getProperty, syncLocalToCloud,
-      isAuthenticated, login, logout, authError, isOnline: connectionStatus === 'connected'
+      currentUser, isAuthenticated, login, register, logout, authError, isAuthenticating,
+      isOnline: connectionStatus === 'connected'
     }}>
       {children}
     </StoreContext.Provider>

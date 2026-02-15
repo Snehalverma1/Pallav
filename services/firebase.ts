@@ -1,6 +1,6 @@
-
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 /**
  * 🛠️ CONFIGURATION UPDATED:
@@ -24,6 +24,7 @@ export const isConfigured = firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_KEY" &&
                            firebaseConfig.projectId !== "estateai-dc09f_placeholder"; 
 
 let db: any = null;
+let auth: any = null;
 let connectionStatus: 'connected' | 'error' | 'unconfigured' = 'unconfigured';
 let connectionError: string | null = null;
 
@@ -31,6 +32,7 @@ if (isConfigured) {
   try {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
     connectionStatus = 'connected';
   } catch (error: any) {
     connectionStatus = 'error';
@@ -42,4 +44,4 @@ if (isConfigured) {
   connectionError = "Please update services/firebase.ts with your own API keys from the Firebase Console.";
 }
 
-export { db, connectionStatus, connectionError };
+export { db, auth, connectionStatus, connectionError };
