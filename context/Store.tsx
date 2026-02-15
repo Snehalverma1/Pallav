@@ -59,6 +59,31 @@ const MOCK_PROPERTIES: Property[] = [
   }
 ];
 
+const getFriendlyErrorMessage = (error: any) => {
+  const code = error.code || '';
+  const message = error.message || '';
+  
+  if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+    return 'Invalid email or password. If you are new, please switch to Register.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'This email is already registered. Please sign in instead.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password should be at least 6 characters.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Network error. Please check your internet connection.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Email/Password sign-in is not enabled in the Firebase Console.';
+  }
+  if (message.includes('API key')) {
+    return 'Configuration Error: Invalid Firebase API Key.';
+  }
+  return message;
+};
+
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [view, setView] = useState<ViewState>({ name: 'USER_GALLERY' });
   const [properties, setProperties] = useState<Property[]>([]);
@@ -173,28 +198,36 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const getProperty = (id: string) => properties.find(p => p.id === id);
 
   const login = async (credentials: UserCreds) => {
-    if (!auth) return;
     setAuthError(null);
+    if (!auth) {
+      setAuthError("Auth service is not initialized. Check firebase.ts.");
+      return;
+    }
+    
     setIsAuthenticating(true);
     try {
       await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
     } catch (e: any) {
-      setAuthError(e.message || "Failed to sign in.");
-      throw e;
+      console.error("Login Error:", e);
+      setAuthError(getFriendlyErrorMessage(e));
     } finally {
       setIsAuthenticating(false);
     }
   };
 
   const register = async (credentials: UserCreds) => {
-    if (!auth) return;
     setAuthError(null);
+    if (!auth) {
+      setAuthError("Auth service is not initialized. Check firebase.ts.");
+      return;
+    }
+    
     setIsAuthenticating(true);
     try {
       await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
     } catch (e: any) {
-      setAuthError(e.message || "Failed to create account.");
-      throw e;
+      console.error("Register Error:", e);
+      setAuthError(getFriendlyErrorMessage(e));
     } finally {
       setIsAuthenticating(false);
     }
