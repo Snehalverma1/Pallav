@@ -1,5 +1,6 @@
 export interface Property {
   id: string;
+  userId?: string;
   title: string;
   price: number;
   address: string;
@@ -8,11 +9,18 @@ export interface Property {
   bathrooms: number;
   sqft: number;
   imageUrl: string;
-  videoUrl?: string; // Can be a blob URL or external link
-  
-  // AI Configuration managed by Admin
-  aiSystemInstruction: string; // The "persona" or specific instructions for this property
+  videoUrl?: string;
+  aiSystemInstruction: string;
   aiTemperature: number;
+}
+
+export interface Inquiry {
+  name: string;
+  phone: string;
+  address: string;
+  inquiryType: 'buy' | 'sell';
+  message: string;
+  userId?: string;
 }
 
 export interface ChatMessage {
@@ -24,11 +32,13 @@ export interface ChatMessage {
 
 export interface User {
   email: string;
-  password: string; // In a real app, this would be hashed!
+  uid: string;
 }
 
-export type ViewState = 
+export type ViewState =
   | { name: 'USER_GALLERY' }
   | { name: 'USER_PROPERTY'; propertyId: string }
+  | { name: 'ADMIN_LOGIN' }
   | { name: 'ADMIN_DASHBOARD' }
-  | { name: 'ADMIN_EDIT'; propertyId: string | null }; // null for new
+  | { name: 'ADMIN_EDIT'; propertyId: string | null }
+  | { name: 'INQUIRY_FORM' };

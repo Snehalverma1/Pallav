@@ -1,14 +1,41 @@
-import { GoogleGenAI, Chat } from "@google/genai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { Property, ChatMessage } from "../types";
 
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("API_KEY is missing from environment variables.");
-    throw new Error("API Key missing");
-  }
-  return new GoogleGenAI({ apiKey });
+const apiKey = import.meta.env.VITE_API_KEY;
+
+if (!apiKey) {
+  console.error("VITE_API_KEY is missing from environment variables.");
+  throw new Error("VITE_API_KEY is missing. Please add it to your .env file.");
+}
+
+const ai = new GoogleGenerativeAI(apiKey);
+
+const generationConfig = {
+  temperature: 0.7,
+  topK: 1,
+  topP: 1,
+  maxOutputTokens: 2048,
 };
+
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+];
+
 
 /**
  * Generates a response based on the property context and user query.
@@ -19,8 +46,6 @@ export const sendPropertyChatMessage = async (
   newMessage: string
 ): Promise<string> => {
   try {
-    const ai = getAiClient();
-    
     const propertyContext = `
       PROPERTY DATA:
       Title: ${property.title}
@@ -44,20 +69,26 @@ export const sendPropertyChatMessage = async (
       2. Keep answers concise and professional unless the Admin Instructions say otherwise.
     `;
 
-    const chat: Chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: {
-        systemInstruction: systemInstruction,
+    const model = ai.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: systemInstruction,
+      generationConfig: {
+        ...generationConfig,
         temperature: property.aiTemperature || 0.7,
       },
+      safetySettings,
+    });
+
+    const chat = model.startChat({
       history: history.map(h => ({
         role: h.role,
         parts: [{ text: h.text }]
-      }))
+      })),
     });
 
-    const result = await chat.sendMessage({ message: newMessage });
-    return result.text || "I'm sorry, I couldn't generate a response.";
+    const result = await chat.sendMessage(newMessage);
+    const response = result.response;
+    return response.text() || "I'm sorry, I couldn't generate a response.";
     
   } catch (error) {
     console.error("Gemini API Error:", error);
@@ -77,8 +108,6 @@ export const sendGlobalAgentMessage = async (
   newMessage: string
 ): Promise<string> => {
   try {
-    const ai = getAiClient();
-
     let context = "";
     let systemInstruction = "";
 
@@ -134,20 +163,23 @@ export const sendGlobalAgentMessage = async (
       systemInstruction = "You are a helpful assistant.";
     }
 
-    const chat: Chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: {
+    const model = ai.getGenerativeModel({
+        model: 'gemini-1.5-flash',
         systemInstruction: systemInstruction,
-        temperature: 0.7,
-      },
+        generationConfig,
+        safetySettings,
+    });
+    
+    const chat = model.startChat({
       history: history.map(h => ({
         role: h.role,
         parts: [{ text: h.text }]
       }))
     });
 
-    const result = await chat.sendMessage({ message: newMessage });
-    return result.text || "I'm listening...";
+    const result = await chat.sendMessage(newMessage);
+    const response = result.response;
+    return response.text() || "I'm listening...";
 
   } catch (error) {
     console.error(error);

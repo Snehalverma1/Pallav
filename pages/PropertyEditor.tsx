@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/Store';
 import { Property, ViewState } from '../types';
-import { Save, ArrowLeft, Upload, Sparkles, AlertCircle, Video } from 'lucide-react';
+import { Save, ArrowLeft, Sparkles, AlertCircle, Video } from 'lucide-react';
 
 interface Props {
   propertyId: string | null;
@@ -10,8 +10,7 @@ interface Props {
 export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
   const { properties, addProperty, updateProperty, navigate } = useStore();
   
-  const initialForm: Property = {
-    id: '',
+  const initialForm: Omit<Property, 'id'> = {
     title: '',
     price: 0,
     address: '',
@@ -25,15 +24,14 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
     aiTemperature: 0.7
   };
 
-  const [formData, setFormData] = useState<Property>(initialForm);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState<Property | Omit<Property, 'id'>>(initialForm);
 
   useEffect(() => {
     if (propertyId) {
       const existing = properties.find(p => p.id === propertyId);
       if (existing) setFormData(existing);
     } else {
-      setFormData({ ...initialForm, id: Date.now().toString() });
+      setFormData(initialForm);
     }
   }, [propertyId, properties]);
 
@@ -45,22 +43,12 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
     }));
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setVideoFile(file);
-      // Create a local blob URL for preview
-      const url = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, videoUrl: url }));
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (propertyId) {
-      updateProperty(formData);
+    if ('id' in formData) {
+      updateProperty(formData as Property);
     } else {
-      addProperty(formData);
+      addProperty(formData as Omit<Property, 'id'>);
     }
     navigate({ name: 'ADMIN_DASHBOARD' });
   };
@@ -97,7 +85,7 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Price ($)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
                 <input required type="number" name="price" value={formData.price} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
 
@@ -144,25 +132,13 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Property Video</label>
-                <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors relative">
-                  <input type="file" accept="video/*" onChange={handleVideoUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                  <div className="flex flex-col items-center pointer-events-none">
-                    <Upload className="text-blue-500 mb-2" size={32} />
-                    <span className="text-sm font-medium text-slate-900">Click to upload video</span>
-                    <span className="text-xs text-slate-500 mt-1">MP4, WebM up to 50MB</span>
-                  </div>
-                </div>
-                {formData.videoUrl && (
+                 <label className="block text-sm font-medium text-slate-700 mb-1">Property Video URL</label>
+                 <input name="videoUrl" value={formData.videoUrl || ''} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none" placeholder="https://example.com/video.mp4" />
+                 {formData.videoUrl && (
                    <div className="mt-3 bg-green-50 text-green-700 px-3 py-2 rounded-md text-sm flex items-center gap-2">
                      <Video size={16} /> Video source set.
                    </div>
                 )}
-                {/* Fallback text input for video url */}
-                <div className="mt-2">
-                   <label className="text-xs text-slate-500">Or paste video URL directly:</label>
-                   <input name="videoUrl" value={formData.videoUrl || ''} onChange={handleChange} className="w-full mt-1 px-3 py-1.5 text-sm border border-slate-200 rounded outline-none" placeholder="https://..." />
-                </div>
               </div>
             </div>
           </section>

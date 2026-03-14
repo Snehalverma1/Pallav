@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/Store';
 import { Plus, Edit2, Trash2, MapPin, CheckCircle2, AlertTriangle, RefreshCw, Database, Cloud, UploadCloud, Info, Server, ShieldCheck, Sparkles, ExternalLink, Code } from 'lucide-react';
-import { connectionStatus, connectionError, firebaseConfig, db, isConfigured } from '../services/firebase';
+import { firebaseConfig, db, isConfigured } from '../services/firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 
 export const AdminDashboard: React.FC = () => {
@@ -60,7 +60,7 @@ export const AdminDashboard: React.FC = () => {
         <div>
           <h2 className="text-4xl font-black text-slate-900 tracking-tight">Manager Dashboard</h2>
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            {isConfigured && connectionStatus === 'connected' ? (
+            {isOnline ? (
                 <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-xs font-bold">
                     <CheckCircle2 size={12}/> Cloud Database Active
                 </div>

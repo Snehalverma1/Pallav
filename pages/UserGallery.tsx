@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useStore } from '../context/Store';
 import { Property } from '../types';
 import { 
@@ -7,15 +7,21 @@ import {
   Bath, 
   MoveRight, 
   Globe, 
-  Star, 
-  Sparkles, 
-  ChevronDown 
+  Sparkles 
 } from 'lucide-react';
-import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { motion } from 'framer-motion';
+import { FilterBar } from '../components/FilterBar';
 
-gsap.registerPlugin(ScrollTrigger);
+const formatPrice = (price: number) => {
+  if (price >= 10000000) { // Crores
+    return `₹${(price / 10000000).toFixed(2)} Cr`;
+  }
+  if (price >= 100000) { // Lakhs
+    return `₹${(price / 100000).toFixed(1)} L`;
+  }
+  return `₹${price.toLocaleString('en-IN')}`; // For smaller amounts
+};
+
 
 const PropertyCard: React.FC<{ property: Property; onClick: () => void }> = ({ property, onClick }) => {
   return (
@@ -34,7 +40,7 @@ const PropertyCard: React.FC<{ property: Property; onClick: () => void }> = ({ p
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
         <div className="absolute top-6 left-6 bg-white/10 backdrop-blur-xl px-4 py-1.5 rounded-xl border border-white/10 text-white font-bold text-xs">
-          ${(property.price / 1000).toLocaleString()}K
+          {formatPrice(property.price)}
         </div>
         <div className="absolute bottom-6 left-6 right-6">
            <h3 className="text-xl font-black text-white mb-1">{property.title}</h3>
@@ -61,11 +67,10 @@ const PropertyCard: React.FC<{ property: Property; onClick: () => void }> = ({ p
 };
 
 export const UserGallery: React.FC = () => {
-  const { properties, navigate } = useStore();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { filteredProperties, navigate } = useStore();
 
   return (
-    <div ref={containerRef} className="pb-12">
+    <div className="pb-12">
       
       {/* 1. COMPACT MOBILE HERO */}
       <section id="home" className="pt-8 pb-12 px-6 text-center">
@@ -74,16 +79,15 @@ export const UserGallery: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="mb-4 inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest"
         >
-          <Sparkles size={12} /> Curated for Perfection
+          <Sparkles size={12} /> A new era of luxury living
         </motion.div>
         
         <h1 className="text-5xl font-black text-white leading-[1.1] tracking-tighter mb-4">
-          FUTURE <br/>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">ESTATES</span>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">Rudraatara</span>
         </h1>
         
         <p className="text-slate-500 text-sm max-w-xs mx-auto font-medium mb-8">
-          Architectural masterpieces curated by neural intelligence.
+          Discover a new era of luxury living, where every detail is crafted to perfection.
         </p>
 
         <div className="flex justify-center gap-3">
@@ -104,7 +108,7 @@ export const UserGallery: React.FC = () => {
       {/* 2. STATS OVERVIEW */}
       <div className="grid grid-cols-2 gap-4 px-6 mb-16">
         <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
-          <div className="text-2xl font-black text-white">$8.4B</div>
+          <div className="text-2xl font-black text-white">₹70k Cr</div>
           <div className="text-slate-500 text-[8px] font-black uppercase tracking-widest">Portfolio</div>
         </div>
         <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
@@ -116,12 +120,14 @@ export const UserGallery: React.FC = () => {
       {/* 3. PROPERTY SHOWCASE */}
       <section id="properties" className="relative">
         <div className="px-6 mb-6 flex justify-between items-end">
-          <h2 className="text-2xl font-black text-white">THE VAULT</h2>
-          <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{properties.length} Results</span>
+            <h2 className="text-2xl font-black text-white">Our Collection</h2>
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{filteredProperties.length} Results</span>
         </div>
-
-        <div className="flex flex-col">
-          {properties.map((p) => (
+        <div className="px-4">
+         <FilterBar />
+        </div>
+        <div className="flex flex-col mt-8">
+          {filteredProperties.map((p) => (
             <PropertyCard 
               key={p.id} 
               property={p} 
@@ -134,14 +140,14 @@ export const UserGallery: React.FC = () => {
       {/* 4. MANIFESTO SNIPPET */}
       <section id="about" className="mt-20 px-6 py-12 bg-white/5 rounded-[3rem] mx-4 border border-white/5 text-center">
         <Globe size={32} className="mx-auto text-blue-400 mb-4 opacity-50" />
-        <h3 className="text-white font-black text-lg mb-4">WE REDEFINE LUXURY</h3>
+        <h3 className="text-white font-black text-lg mb-4">Rudraatara</h3>
         <p className="text-slate-400 text-xs leading-relaxed font-medium italic">
-          "Our algorithm processes 1.2 million architectural variables to find resonance between owner and estate."
+          "Welcome to Rudraatara, where luxury meets innovation. Our cutting-edge AI curates the most exquisite properties, tailored to your unique lifestyle and preferences."
         </p>
       </section>
 
       <div id="contact" className="py-20 px-6 text-center">
-        <button className="bg-white text-slate-950 w-full py-5 rounded-[2rem] font-black text-lg shadow-xl active:scale-95 transition-all">
+        <button onClick={() => navigate({ name: 'INQUIRY_FORM' })} className="bg-white text-slate-950 w-full py-5 rounded-[2rem] font-black text-lg shadow-xl active:scale-95 transition-all">
           Initiate Connection
         </button>
       </div>

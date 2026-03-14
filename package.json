@@ -1,6 +1,5 @@
-
 {
-  "name": "estate-ai-manager",
+  "name": "rudraatara",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -10,8 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.33.0",
+    "@google/generative-ai": "^0.14.1",
     "firebase": "^11.1.0",
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.0.6",
     "framer-motion": "^11.11.11",
     "gsap": "^3.12.5",
     "lucide-react": "^0.460.0",
@@ -19,6 +20,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.5.0",
+    "@capacitor/core": "^8.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

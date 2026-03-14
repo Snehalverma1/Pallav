@@ -10,6 +10,24 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { navigate, view, isAuthenticated, currentUser, logout } = useStore();
   const [scrolled, setScrolled] = useState(false);
+  const [adminClickCount, setAdminClickCount] = useState(0);
+
+  // Secret admin handshake logic
+  useEffect(() => {
+    if (adminClickCount === 0) return;
+    const timer = setTimeout(() => setAdminClickCount(0), 2000); // Reset after 2s
+    return () => clearTimeout(timer);
+  }, [adminClickCount]);
+
+  const handleLogoClick = () => {
+    const newCount = adminClickCount + 1;
+    setAdminClickCount(newCount);
+    if (newCount >= 5) {
+      navigate({ name: 'ADMIN_AUTH' });
+      setAdminClickCount(0);
+    }
+  };
+
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -56,7 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Top App Bar */}
       <header className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${scrolled ? 'bg-slate-950/80 backdrop-blur-xl border-b border-white/5 py-3' : 'bg-transparent py-6'}`}>
         <div className="max-w-xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3" onClick={() => navigate({ name: 'USER_GALLERY' })}>
+          <div className="flex items-center gap-3" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
             <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-lg">
               <Building2 size={18} className="text-slate-950" />
             </div>

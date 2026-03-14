@@ -1,9 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../context/Store';
-import { Property, ChatMessage } from '../types';
-import { sendPropertyChatMessage } from '../services/geminiService';
-import { ArrowLeft, Send, Sparkles, Bed, Bath, Square, Play, Bot, MapPin, ChevronRight, Share2, Heart } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Share2, Heart, Bed, Bath, Square, MapPin, ChevronRight, Sparkles, Bot } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   propertyId: string;
@@ -12,17 +10,83 @@ interface Props {
 export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
   const { getProperty, navigate } = useStore();
   const property = getProperty(propertyId);
-  const [activeTab, setActiveTab] = useState<'details' | 'ai'>('details');
+  const [showVideo, setShowVideo] = useState(false);
 
   if (!property) return <div className="p-20 text-center text-white">Property not found</div>;
 
+  const hasVideo = property.videoUrl && property.videoUrl.trim() !== '';
+  
+  let videoEmbedUrl = '';
+  let videoType: 'youtube' | 'vimeo' | 'direct' | 'none' = 'none';
+
+  if (hasVideo) {
+    if (property.videoUrl.includes('youtube.com/watch') || property.videoUrl.includes('youtu.be')) {
+      videoType = 'youtube';
+      const videoId = property.videoUrl.includes('youtu.be')
+        ? property.videoUrl.split('/').pop()?.split('?')[0]
+        : new URL(property.videoUrl).searchParams.get('v');
+      videoEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
+    } else if (property.videoUrl.includes('vimeo.com')) {
+      videoType = 'vimeo';
+      const videoId = property.videoUrl.split('/').pop()?.split('?')[0];
+      videoEmbedUrl = `https://player.vimeo.com/video/${videoId}`;
+    } else {
+      videoType = 'direct';
+      videoEmbedUrl = property.videoUrl;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950">
+      <AnimatePresence>
+        {showVideo && hasVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+            onClick={() => setShowVideo(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              className="w-full max-w-4xl p-4 aspect-video"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {videoType === 'youtube' || videoType === 'vimeo' ? (
+                <iframe 
+                  src={videoEmbedUrl}
+                  title="Video player" 
+                  frameBorder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen
+                  className="w-full h-full rounded-lg shadow-2xl"
+                ></iframe>
+              ) : (
+                <video src={videoEmbedUrl} controls autoPlay className="w-full h-full rounded-lg shadow-2xl" />
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Media Section */}
       <div className="relative h-[60vh] w-full">
         <img src={property.imageUrl} alt={property.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
         
+        {hasVideo && (
+            <div className='absolute inset-0 flex items-center justify-center'>
+                <button 
+                    onClick={() => setShowVideo(true)}
+                    className='w-24 h-24 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center text-white border-2 border-white/50 hover:bg-white/30 transition-all scale-100 active:scale-90 shadow-2xl'
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-12 h-12"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>
+                </button>
+            </div>
+        )}
+
         {/* Top Controls */}
         <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
           <button onClick={() => navigate({ name: 'USER_GALLERY' })} className="w-10 h-10 bg-slate-950/40 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/10">

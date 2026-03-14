@@ -1,131 +1,159 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Property, ViewState, User as UserCreds } from '../types';
-import { db, auth, connectionStatus } from '../services/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import { Property, ViewState, User, Inquiry } from '../types';
+import { db, auth } from '../services/firebase';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+
+interface Filters {
+    searchTerm: string;
+    maxPrice: number | null;
+}
 
 interface StoreContextType {
   view: ViewState;
   navigate: (view: ViewState) => void;
   properties: Property[];
-  addProperty: (p: Property) => void;
+  filteredProperties: Property[];
+  addProperty: (p: Omit<Property, 'id' | 'userId'>) => void;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
   getProperty: (id: string) => Property | undefined;
-  syncLocalToCloud: () => Promise<void>;
-  
-  // Auth
-  currentUser: User | null;
-  isAuthenticated: boolean;
-  login: (u: UserCreds) => Promise<void>;
-  register: (u: UserCreds) => Promise<void>;
-  logout: () => Promise<void>;
-  authError: string | null;
-  isAuthenticating: boolean;
-  
-  // System Status
   isOnline: boolean;
+  filters: Filters;
+  setFilters: (filters: Filters) => void;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  currentUser: User | null;
+  login: (email: string, pass: string) => Promise<any | string>;
+  signUp: (email: string, pass: string) => Promise<any | string>;
+  logout: () => void;
+  syncLocalToCloud: () => Promise<void>;
+  isDemoMode: boolean;
+  setIsDemoMode: (isDemo: boolean) => void;
+  addInquiry: (inquiry: Inquiry) => Promise<boolean | string>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const MOCK_PROPERTIES: Property[] = [
-  {
-    id: '1',
-    title: 'Modern Sunset Villa',
-    price: 1250000,
-    address: '123 Ocean Dr, Malibu, CA',
-    description: 'A stunning modern villa with panoramic ocean views, infinity pool, and smart home integration.',
-    bedrooms: 4,
-    bathrooms: 3.5,
-    sqft: 3200,
-    imageUrl: 'https://picsum.photos/id/122/800/600',
-    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    aiSystemInstruction: 'You are an enthusiastic luxury agent. Focus on the sunset views and the high-tech smart features. Use emojis.',
-    aiTemperature: 0.8
-  },
-  {
-    id: '2',
-    title: 'Cozy Downtown Loft',
-    price: 450000,
-    address: '45 Main St, Seattle, WA',
-    description: 'Industrial chic loft in the heart of the city. Exposed brick, high ceilings, and walking distance to best coffee shops.',
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 850,
-    imageUrl: 'https://picsum.photos/id/195/800/600',
-    aiSystemInstruction: 'You are a practical, no-nonsense agent. Focus on the investment value, low HOA fees, and proximity to tech hubs.',
-    aiTemperature: 0.4
-  }
-];
-
-const getFriendlyErrorMessage = (error: any) => {
-  const code = error.code || '';
-  const message = error.message || '';
-  
-  if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
-    return 'Invalid email or password. If you are new, please switch to Register.';
-  }
-  if (code === 'auth/email-already-in-use') {
-    return 'This email is already registered. Please sign in instead.';
-  }
-  if (code === 'auth/weak-password') {
-    return 'Password should be at least 6 characters.';
-  }
-  if (code === 'auth/network-request-failed') {
-    return 'Network error. Please check your internet connection.';
-  }
-  if (code === 'auth/operation-not-allowed') {
-    return 'Email/Password sign-in is not enabled in the Firebase Console.';
-  }
-  if (message.includes('API key')) {
-    return 'Configuration Error: Invalid Firebase API Key.';
-  }
-  return message;
-};
+    {
+      id: '1',
+      userId: 'admin_user',
+      title: 'Modern Sunset Villa',
+      price: 1250000,
+      address: '123 Ocean Dr, Malibu, CA',
+      description: 'A stunning modern villa with panoramic ocean views, infinity pool, and smart home integration.',
+      bedrooms: 4,
+      bathrooms: 3.5,
+      sqft: 3200,
+      imageUrl: 'https://picsum.photos/id/122/800/600',
+      videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      aiSystemInstruction: 'You are an enthusiastic luxury agent. Focus on the sunset views and the high-tech smart features. Use emojis.',
+      aiTemperature: 0.8
+    },
+    {
+      id: '2',
+      userId: 'admin_user',
+      title: 'Cozy Downtown Loft',
+      price: 450000,
+      address: '45 Main St, Seattle, WA',
+      description: 'Industrial chic loft in the heart of the city. Exposed brick, high ceilings, and walking distance to best coffee shops.',
+      bedrooms: 1,
+      bathrooms: 1,
+      sqft: 850,
+      imageUrl: 'https://picsum.photos/id/195/800/600',
+      aiSystemInstruction: 'You are a practical, no-nonsense agent. Focus on the investment value, low HOA fees, and proximity to tech hubs.',
+      aiTemperature: 0.4
+    }
+  ];
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [view, setView] = useState<ViewState>({ name: 'USER_GALLERY' });
   const [properties, setProperties] = useState<Property[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [filters, setFilters] = useState<Filters>({ searchTerm: '', maxPrice: null });
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const isAuthenticated = !!currentUser;
 
-  // Auth State Listener
   useEffect(() => {
-    if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setCurrentUser(user);
-        setIsAuthenticated(!!user);
-        setIsAuthenticating(false);
-      });
-      return () => unsubscribe();
-    } else {
-      setIsAuthenticating(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && db) {
+        const adminDocRef = doc(db, 'admins', user.uid);
+        try {
+            const adminDoc = await getDoc(adminDocRef);
+            setIsAdmin(adminDoc.exists());
+        } catch (error) {
+            console.error("Error checking admin status:", error);
+            setIsAdmin(false);
+        }
+        setCurrentUser({ email: user.email || '', uid: user.uid });
+      } else {
+        setCurrentUser(null);
+        setIsAdmin(false);
+      }
+      setIsOnline(!!user && !isDemoMode);
+    });
+    return () => unsubscribe();
+  }, [isDemoMode]);
+
+
+  const login = async (email: string, password: string): Promise<any | string> => {
+    if (isDemoMode) {
+        alert("Login is disabled in Demo Mode.");
+        return "Login disabled.";
     }
-  }, []);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return true;
+    } catch (error: any) {
+        return error.message;
+    }
+  };
+
+  const signUp = async (email: string, password: string): Promise<any | string> => {
+    if (isDemoMode) {
+        alert("Sign up is disabled in Demo Mode.");
+        return "Sign up disabled.";
+    }
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        return userCredential;
+    } catch (error: any) {
+        return error.message;
+    }
+  };
+
+  const logout = () => {
+    if (!isDemoMode) {
+      signOut(auth);
+    }
+  }
 
   useEffect(() => {
-    if (connectionStatus === 'connected' && db) {
-      const unsubscribe = onSnapshot(collection(db, 'properties'), (snapshot) => {
+    if (!isDemoMode && currentUser && db) {
+      const q = query(collection(db, 'properties'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
         const cloudProps = snapshot.docs.map(doc => ({ 
           id: doc.id, 
           ...doc.data() 
         })) as Property[];
         setProperties(cloudProps);
         setDataLoaded(true);
+        setIsOnline(true);
       }, (error) => {
         console.warn("Firestore access error. Using local fallback.", error);
         loadLocalData();
+        setIsOnline(false);
       });
       return () => unsubscribe();
     } else {
       loadLocalData();
     }
-  }, []);
+  }, [isDemoMode, currentUser]);
 
   const loadLocalData = () => {
     const saved = localStorage.getItem('estate_properties');
@@ -134,47 +162,98 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   useEffect(() => {
-    if (connectionStatus !== 'connected' && dataLoaded) {
+    if (dataLoaded) {
       localStorage.setItem('estate_properties', JSON.stringify(properties));
     }
   }, [properties, dataLoaded]);
 
+
   const syncLocalToCloud = async () => {
-    if (connectionStatus !== 'connected' || !db) return;
-    
-    const localSaved = localStorage.getItem('estate_properties');
-    if (!localSaved) return;
-    
-    const localProps: Property[] = JSON.parse(localSaved);
-    const querySnapshot = await getDocs(collection(db, 'properties'));
-    const existingTitles = querySnapshot.docs.map(d => d.data().title);
-
-    for (const p of localProps) {
-      if (!existingTitles.includes(p.title)) {
-        const { id, ...data } = p;
-        await addDoc(collection(db, 'properties'), data);
-      }
+    if(isDemoMode || !isOnline || !db || !currentUser) {
+        alert("Not connected or logged in. Cannot sync.");
+        return;
     }
-    
-    localStorage.removeItem('estate_properties');
-  };
 
-  const addProperty = async (p: Property) => {
-    if (connectionStatus === 'connected' && db) {
+    const localProps = JSON.parse(localStorage.getItem('estate_properties') || '[]') as Property[];
+    const cloudPropsIds = new Set(properties.map(p => p.id));
+
+    const toAdd = localProps.filter(p => p.id.startsWith('local-'));
+    const toUpdate = localProps.filter(p => !p.id.startsWith('local-') && !cloudPropsIds.has(p.id));
+
+    if (toAdd.length === 0 && toUpdate.length === 0) {
+        alert("Already up-to-date!");
+        return;
+    }
+
+    const batch = writeBatch(db);
+
+    toAdd.forEach(prop => {
+        const { id, ...data } = prop;
+        const newDocRef = doc(collection(db, "properties"));
+        batch.set(newDocRef, {...data, userId: currentUser.email});
+    });
+
+    toUpdate.forEach(prop => {
+        const docRef = doc(db, "properties", prop.id);
+        batch.update(docRef, {...prop, userId: currentUser.email});
+    });
+
+    try {
+        await batch.commit();
+        alert(`Sync successful! Added ${toAdd.length} and updated ${toUpdate.length} properties.`);
+        const nonLocalProps = localProps.filter(p => !p.id.startsWith('local-'));
+        localStorage.setItem('estate_properties', JSON.stringify(nonLocalProps));
+
+    } catch (e) {
+        console.error("Sync Error:", e);
+        alert("Sync failed. Check console and Firestore rules.");
+    }
+};
+
+  const addProperty = async (p: Omit<Property, 'id' | 'userId'>) => {
+    if (isDemoMode) {
+        const localProperty: Property = { ...p, id: `local-${Date.now()}`, userId: 'demo_user' };
+        setProperties(prev => [...prev, localProperty]);
+        return;
+    }
+    if (!currentUser) {
+        alert("You must be logged in to add a property.");
+        return;
+    }
+    const newProperty: Omit<Property, 'id'> = { ...p, userId: currentUser.email };
+    if (isOnline && db) {
       try {
-        const { id, ...data } = p; 
-        await addDoc(collection(db, 'properties'), data);
+        await addDoc(collection(db, 'properties'), newProperty);
       } catch (e) {
         console.error("Cloud Error:", e);
-        alert("Permission Denied: Ensure you are logged in or set Firestore Rules to allow access.");
+        alert("Permission Denied: Ensure your Firestore Rules allow write access.");
       }
     } else {
-      setProperties(prev => [...prev, p]);
+      const localProperty: Property = { ...newProperty, id: `local-${Date.now()}` };
+      setProperties(prev => [...prev, localProperty]);
+    }
+  };
+
+  const addInquiry = async (inquiry: Inquiry): Promise<boolean | string> => {
+    if (!isOnline || !db) {
+      alert('Cannot submit inquiry while offline.');
+      return 'Cannot submit inquiry while offline.';
+    }
+    try {
+      await addDoc(collection(db, 'inquiries'), inquiry);
+      return true;
+    } catch (e: any) {
+      console.error('Inquiry Error:', e);
+      return e.message as string;
     }
   };
 
   const updateProperty = async (p: Property) => {
-    if (connectionStatus === 'connected' && db) {
+    if (isDemoMode) {
+        setProperties(prev => prev.map(item => item.id === p.id ? p : item));
+        return;
+    }
+    if (isOnline && db) {
       const { id, ...data } = p;
       await updateDoc(doc(db, 'properties', id), data);
     } else {
@@ -183,7 +262,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteProperty = async (id: string) => {
-    if (connectionStatus === 'connected' && db) {
+    if (isDemoMode) {
+        setProperties(prev => prev.filter(p => p.id !== id));
+        return;
+    }
+    if (isOnline && db) {
       await deleteDoc(doc(db, 'properties', id));
     } else {
       setProperties(prev => prev.filter(p => p.id !== id));
@@ -192,62 +275,39 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const navigate = (newView: ViewState) => {
     setView(newView);
-    setAuthError(null);
   };
 
   const getProperty = (id: string) => properties.find(p => p.id === id);
 
-  const login = async (credentials: UserCreds) => {
-    setAuthError(null);
-    if (!auth) {
-      setAuthError("Auth service is not initialized. Check firebase.ts.");
-      return;
-    }
+  const filteredProperties = properties.filter(p => {
+    const searchTermMatch = 
+      filters.searchTerm === '' ||
+      p.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      p.address.toLowerCase().includes(filters.searchTerm.toLowerCase());
     
-    setIsAuthenticating(true);
-    try {
-      await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
-    } catch (e: any) {
-      console.error("Login Error:", e);
-      setAuthError(getFriendlyErrorMessage(e));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
+    const priceMatch = filters.maxPrice === null || p.price <= filters.maxPrice;
 
-  const register = async (credentials: UserCreds) => {
-    setAuthError(null);
-    if (!auth) {
-      setAuthError("Auth service is not initialized. Check firebase.ts.");
-      return;
-    }
-    
-    setIsAuthenticating(true);
-    try {
-      await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-    } catch (e: any) {
-      console.error("Register Error:", e);
-      setAuthError(getFriendlyErrorMessage(e));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
+    return searchTermMatch && priceMatch;
+  })
 
-  const logout = async () => {
-    if (!auth) return;
-    try {
-      await signOut(auth);
-      navigate({ name: 'USER_GALLERY' });
-    } catch (e) {
-      console.error("Logout Error:", e);
-    }
-  };
 
   return (
-    <StoreContext.Provider value={{ 
-      view, navigate, properties, addProperty, updateProperty, deleteProperty, getProperty, syncLocalToCloud,
-      currentUser, isAuthenticated, login, register, logout, authError, isAuthenticating,
-      isOnline: connectionStatus === 'connected'
+    <StoreContext.Provider value={{
+      view, navigate, properties, addProperty, updateProperty, deleteProperty, getProperty,
+      isOnline,
+      filters,
+      setFilters,
+      filteredProperties,
+      isAuthenticated,
+      isAdmin,
+      currentUser,
+      login,
+      signUp,
+      logout,
+      syncLocalToCloud,
+      isDemoMode,
+      setIsDemoMode,
+      addInquiry
     }}>
       {children}
     </StoreContext.Provider>
