@@ -76,12 +76,19 @@ export const GlobalGuide: React.FC = () => {
       text: textToSend,
       timestamp: Date.now()
     };
-    setMessages(prev => [...prev, userMsg]);
+    
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setIsThinking(true);
 
     try {
-       const responseText = await sendGlobalAgentMessage(view.name, currentProperty, properties, messages, textToSend);
+       const history = newMessages.slice(0, -1); 
+       const historyForApi = history.length > 0 && history[0].role === 'model'
+        ? history.slice(1)
+        : history;
+
+       const responseText = await sendGlobalAgentMessage(view.name, currentProperty, properties, historyForApi, textToSend);
        handleAiResponse(responseText);
     } catch (e) {
        handleAiResponse("Connection is lost. Try again?");

@@ -65,12 +65,12 @@ export const sendPropertyChatMessage = async (
       ${propertyContext}
       
       RULES:
-      1. If the user asks something not in the context, politely say you don't know or defer to the agent.
+      1. If the user asks something not in the context, politely say you're not sure or defer to the agent.
       2. Keep answers concise and professional unless the Admin Instructions say otherwise.
     `;
 
     const model = ai.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-pro',
       systemInstruction: systemInstruction,
       generationConfig: {
         ...generationConfig,
@@ -139,7 +139,7 @@ export const sendGlobalAgentMessage = async (
 
     } else if (currentView === 'USER_PROPERTY' && currentProperty) {
       context = `
-        USER LOCATION: Viewing details of "${currentProperty.title}".
+        USER LOCATION: Viewing details of \"${currentProperty.title}\".
         PROPERTY DETAILS:
         Price: $${currentProperty.price}
         Address: ${currentProperty.address}
@@ -157,14 +157,14 @@ export const sendGlobalAgentMessage = async (
         INSTRUCTIONS:
         1. Act as if you are standing right next to the user.
         2. Keep it conversational and brief.
-        3. Mention the "Admin's Sales Pitch": "${currentProperty.aiSystemInstruction}".
+        3. Mention the "Admin's Sales Pitch": \"${currentProperty.aiSystemInstruction}\".
       `;
     } else {
       systemInstruction = "You are a helpful assistant.";
     }
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-pro',
         systemInstruction: systemInstruction,
         generationConfig,
         safetySettings,
