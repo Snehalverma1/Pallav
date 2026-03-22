@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Property, ViewState, User, Inquiry } from '../types';
 import { db, auth } from '../services/firebase';
@@ -48,7 +49,7 @@ const MOCK_PROPERTIES: Property[] = [
       sqft: 3200,
       imageUrl: 'https://picsum.photos/id/122/800/600',
       videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      aiSystemInstruction: 'You are an enthusiastic luxury agent. Focus on the sunset views and the high-tech smart features. Use emojis.',
+      aiSystemInstruction: 'You are an enthusiastic luxury agent. Focus on the sunset views and the high-tech smart features. Use emojis and sophisticated language.',
       aiTemperature: 0.8
     },
     {
@@ -62,7 +63,7 @@ const MOCK_PROPERTIES: Property[] = [
       bathrooms: 1,
       sqft: 850,
       imageUrl: 'https://picsum.photos/id/195/800/600',
-      aiSystemInstruction: 'You are a practical, no-nonsense agent. Focus on the investment value, low HOA fees, and proximity to tech hubs.',
+      aiSystemInstruction: 'You are a sophisticated and eloquent real estate concierge. Your focus is on the luxurious features, breathtaking views, and architectural marvels of the property. Use vivid and evocative language to paint a picture of opulence and exclusivity.',
       aiTemperature: 0.4
     }
   ];

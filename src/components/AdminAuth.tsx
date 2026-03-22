@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/Store';
 import { db } from '../../services/firebase';
@@ -51,7 +50,7 @@ const AdminAuth: React.FC = () => {
 
     try {
       if (isSigningUp) {
-        const userCredential = await signUp(email, password);
+        const userCredential = await signUp(email, password, "");
         if (typeof userCredential === 'string' || !userCredential?.user) {
             throw new Error(typeof userCredential === 'string' ? userCredential : 'Failed to create user.');
         }
@@ -146,7 +145,7 @@ const AdminAuth: React.FC = () => {
             <div className="text-sm text-center">
                 <button
                     className="font-medium text-indigo-600 hover:text-indigo-500"
-                    onClick={() => navigate({ name: 'USER_GALLERY' })}
+                    onClick={() => navigate({ name: 'USER_GALLERY'})}
                 >
                     Back to Site
                 </button>
