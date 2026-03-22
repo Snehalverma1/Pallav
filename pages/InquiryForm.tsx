@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/Store';
+import { Property } from '../types';
 
-export const InquiryForm: React.FC = () => {
-  const { currentUser, addInquiry, navigate } = useStore();
+interface Props {
+    propertyId?: string;
+}
+
+export const InquiryForm: React.FC<Props> = ({ propertyId }) => {
+  const { currentUser, addInquiry, navigate, getProperty } = useStore();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -10,6 +15,17 @@ export const InquiryForm: React.FC = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [property, setProperty] = useState<Property | null>(null);
+
+  useEffect(() => {
+    if (propertyId) {
+      const prop = getProperty(propertyId);
+      if (prop) {
+        setProperty(prop);
+        setMessage(`I am interested in the property "${prop.title}" at ${prop.address}.`);
+      }
+    }
+  }, [propertyId, getProperty]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +33,7 @@ export const InquiryForm: React.FC = () => {
       setError('Please fill out all fields.');
       return;
     }
-    const inquiry = { name, phone, address, inquiryType, message, userId: currentUser?.uid };
+    const inquiry = { name, phone, address, inquiryType, message, userId: currentUser?.uid, propertyId };
     const result = await addInquiry(inquiry);
     if (result === true) {
       setSuccess(true);
@@ -43,7 +59,11 @@ export const InquiryForm: React.FC = () => {
     <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center gap-4 p-4">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-white mt-4">Submit an Inquiry</h1>
-        <p className="text-slate-400">Let us know what you're looking for.</p>
+        {property ? (
+            <p className="text-slate-400">You are inquiring about: <span className="font-bold text-white">{property.title}</span></p>
+        ) : (
+            <p className="text-slate-400">Let us know what you're looking for.</p>
+        )}
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-xs">
         <input
@@ -64,14 +84,14 @@ export const InquiryForm: React.FC = () => {
           type="text"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="Address"
+          placeholder="Your Address"
           className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
         />
         <div className="flex gap-2">
           <button type="button" onClick={() => setInquiryType('buy')} className={`flex-1 p-2 rounded transition-colors ${inquiryType === 'buy' ? 'bg-blue-600' : 'bg-slate-800'} text-white`}>
             Buy
           </button>
-          <button type="button" onClick={() => setInquiryType('sell')} className={`flex-1 p-2 rounded transition-colors ${inquiryType === 'sell' ? 'bg-slate-800' : 'bg-slate-800'} text-white`}>
+          <button type="button" onClick={() => setInquiryType('sell')} className={`flex-1 p-2 rounded transition-colors ${inquiryType === 'sell' ? 'bg-blue-600' : 'bg-slate-800'} text-white`}>
             Sell
           </button>
         </div>
@@ -79,7 +99,7 @@ export const InquiryForm: React.FC = () => {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Tell us more about what you're looking for..."
-          className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+          className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center h-24"
         />
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         <button type="submit" className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors">

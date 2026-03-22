@@ -5,6 +5,7 @@ import { LogIn } from 'lucide-react';
 export const AuthGate: React.FC = () => {
   const { login, signUp } = useStore();
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -18,7 +19,7 @@ export const AuthGate: React.FC = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await signUp(email, password);
+    const result = await signUp(email, password, phone);
     if (typeof result === 'string') {
       setError(result);
     }
@@ -40,11 +41,18 @@ export const AuthGate: React.FC = () => {
             className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
             autoFocus
           />
+           <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone Number"
+            className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+          />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="Set your Rudratara password"
             className="p-2 rounded bg-slate-800 text-white border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
           />
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}

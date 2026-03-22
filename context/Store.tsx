@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Property, ViewState, User, Inquiry } from '../types';
 import { db, auth } from '../services/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 interface Filters {
@@ -25,7 +25,7 @@ interface StoreContextType {
   isAdmin: boolean;
   currentUser: User | null;
   login: (email: string, pass: string) => Promise<any | string>;
-  signUp: (email: string, pass: string) => Promise<any | string>;
+  signUp: (email: string, pass: string, phone: string) => Promise<any | string>;
   logout: () => void;
   syncLocalToCloud: () => Promise<void>;
   isDemoMode: boolean;
@@ -82,15 +82,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && db) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
         const adminDocRef = doc(db, 'admins', user.uid);
-        try {
-            const adminDoc = await getDoc(adminDocRef);
-            setIsAdmin(adminDoc.exists());
-        } catch (error) {
-            console.error("Error checking admin status:", error);
-            setIsAdmin(false);
-        }
-        setCurrentUser({ email: user.email || '', uid: user.uid });
+        const adminDoc = await getDoc(adminDocRef);
+        
+        setIsAdmin(adminDoc.exists());
+        setCurrentUser({ 
+            email: user.email || '', 
+            uid: user.uid, 
+            phone: userDoc.exists() ? userDoc.data().phone : '' 
+        });
+
       } else {
         setCurrentUser(null);
         setIsAdmin(false);
@@ -114,13 +117,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const signUp = async (email: string, password: string): Promise<any | string> => {
+  const signUp = async (email: string, password: string, phone: string): Promise<any | string> => {
     if (isDemoMode) {
         alert("Sign up is disabled in Demo Mode.");
         return "Sign up disabled.";
     }
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        if (db) {
+            await setDoc(doc(db, "users", user.uid), {
+                email: user.email,
+                phone: phone
+            });
+        }
         return userCredential;
     } catch (error: any) {
         return error.message;

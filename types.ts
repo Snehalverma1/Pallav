@@ -21,6 +21,7 @@ export interface Inquiry {
   inquiryType: 'buy' | 'sell';
   message: string;
   userId?: string;
+  propertyId?: string;
 }
 
 export interface ChatMessage {
@@ -33,6 +34,7 @@ export interface ChatMessage {
 export interface User {
   email: string;
   uid: string;
+  phone?: string;
 }
 
 export type ViewState =
@@ -41,4 +43,4 @@ export type ViewState =
   | { name: 'ADMIN_LOGIN' }
   | { name: 'ADMIN_DASHBOARD' }
   | { name: 'ADMIN_EDIT'; propertyId: string | null }
-  | { name: 'INQUIRY_FORM' };
+  | { name: 'INQUIRY_FORM'; propertyId?: string };

@@ -7,6 +7,16 @@ interface Props {
   propertyId: string;
 }
 
+const formatPrice = (price: number) => {
+    if (price >= 10000000) { // Crores
+      return `₹${(price / 10000000).toFixed(2)} Cr`;
+    }
+    if (price >= 100000) { // Lakhs
+      return `₹${(price / 100000).toFixed(1)} L`;
+    }
+    return `₹${price.toLocaleString('en-IN')}`; // For smaller amounts
+  };
+
 export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
   const { getProperty, navigate } = useStore();
   const property = getProperty(propertyId);
@@ -38,35 +48,43 @@ export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <AnimatePresence>
+       <AnimatePresence>
         {showVideo && hasVideo && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+            className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
             onClick={() => setShowVideo(false)}
           >
             <motion.div 
-              initial={{ scale: 0.8 }}
+              initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-              className="w-full max-w-4xl p-4 aspect-video"
+              exit={{ scale: 0.9 }}
+              className="w-screen h-screen"
               onClick={(e) => e.stopPropagation()}
             >
               {videoType === 'youtube' || videoType === 'vimeo' ? (
                 <iframe 
-                  src={videoEmbedUrl}
+                  src={videoEmbedUrl + '?autoplay=1'}
                   title="Video player" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen
-                  className="w-full h-full rounded-lg shadow-2xl"
+                  className="w-full h-full"
                 ></iframe>
               ) : (
-                <video src={videoEmbedUrl} controls autoPlay className="w-full h-full rounded-lg shadow-2xl" />
+                <video src={videoEmbedUrl} controls autoPlay className="w-full h-full" />
               )}
             </motion.div>
+            <button 
+              onClick={() => setShowVideo(false)} 
+              className="absolute top-5 right-5 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white z-10"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -130,8 +148,9 @@ export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
               <MapPin size={16} className="text-blue-500" /> {property.address}
             </p>
           </div>
-          <div className="text-2xl font-black text-blue-400">
-            ${property.price.toLocaleString()}
+          <div className="text-right">
+             <div className="text-2xl font-black text-blue-400">{formatPrice(property.price)}</div>
+             <div className="text-slate-500 text-[8px] font-black uppercase tracking-widest">Market Value</div>
           </div>
         </div>
 
@@ -160,6 +179,15 @@ export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
           <p className="text-slate-400 leading-relaxed text-sm font-medium whitespace-pre-line bg-white/5 p-6 rounded-[2rem] border border-white/5">
             {property.description}
           </p>
+        </div>
+
+        <div className="my-8">
+            <button
+                onClick={() => navigate({ name: 'INQUIRY_FORM', propertyId: property.id })}
+                className="w-full bg-green-600 text-white p-4 rounded-xl hover:bg-green-700 transition-colors font-bold"
+            >
+                Enquire Now
+            </button>
         </div>
 
         {/* AI Control Center Badge */}

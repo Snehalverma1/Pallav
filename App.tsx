@@ -52,7 +52,7 @@ const AppContent: React.FC = () => {
       case 'USER_PROPERTY':
         return <PropertyDetail propertyId={view.propertyId} />;
       case 'INQUIRY_FORM':
-        return <InquiryForm />;
+        return <InquiryForm propertyId={view.propertyId} />;
       default:
         return <UserGallery />;
     }
