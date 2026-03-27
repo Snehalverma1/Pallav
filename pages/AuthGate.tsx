@@ -11,17 +11,21 @@ export const AuthGate: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     const result = await login(email, password);
     if (typeof result === 'string') {
-      setError(result);
+      setError("Invalid credentials. Please try again.");
+      console.error("Login Error:", result);
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     const result = await signUp(email, password, phone);
     if (typeof result === 'string') {
-      setError(result);
+      setError("An error occurred during sign up. Please try again.");
+      console.error("Sign Up Error:", result);
     }
   };
 
