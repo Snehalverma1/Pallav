@@ -21,7 +21,8 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
     imageUrl: 'https://picsum.photos/800/600',
     videoUrl: '',
     aiSystemInstruction: 'You are a professional real estate agent. Answer questions accurately based on the property details.',
-    aiTemperature: 0.7
+    aiTemperature: 0.7,
+    listingType: 'sale'
   };
 
   const [formData, setFormData] = useState<Property | Omit<Property, 'id'>>(initialForm);
@@ -87,6 +88,16 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
                 <input required type="number" name="price" value={formData.price} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Listing Type</label>
+                <select required name="listingType" value={(formData as Property).listingType} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="sale">For Sale</option>
+                  <option value="rent">For Rent</option>
+                  <option value="hostel">Hostel</option>
+                  <option value="pg">PG</option>
+                </select>
               </div>
 
               <div>
@@ -175,7 +186,7 @@ export const PropertyEditor: React.FC<Props> = ({ propertyId }) => {
                 </div>
                 <p className="text-xs text-indigo-600 mt-2 flex items-start gap-1">
                   <AlertCircle size={12} className="mt-0.5" />
-                  This prompt "commands" the AI. If you say "Don't mention the small kitchen", the AI will follow that rule when chatting with users.
+                  This prompt \"commands\" the AI. If you say \"Don't mention the small kitchen\", the AI will follow that rule when chatting with users.
                 </p>
               </div>
 

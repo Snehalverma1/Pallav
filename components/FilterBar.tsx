@@ -16,6 +16,10 @@ export const FilterBar: React.FC = () => {
     setFilters({ ...filters, searchTerm: e.target.value });
   };
 
+  const handleListingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters({ ...filters, listingType: e.target.value as 'all' | 'sale' | 'rent' | 'hostel' | 'pg' });
+  };
+
   return (
     <div className="bg-slate-800/50 backdrop-blur-lg p-4 rounded-lg flex flex-col sm:flex-row gap-4 items-center sticky top-4 z-10">
       <div className="relative w-full sm:flex-1">
@@ -27,6 +31,19 @@ export const FilterBar: React.FC = () => {
           onChange={handleSearchChange}
           className="w-full p-2 pl-10 rounded-md bg-slate-900/80 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={filters.listingType}
+          onChange={handleListingTypeChange}
+          className="p-2 rounded-md bg-slate-900/80 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All</option>
+          <option value="sale">For Sale</option>
+          <option value="rent">For Rent</option>
+          <option value="hostel">Hostel</option>
+          <option value="pg">PG</option>
+        </select>
       </div>
       <div className="flex items-center gap-4 w-full sm:w-auto">
         <SlidersHorizontal className="text-slate-400" size={20} />

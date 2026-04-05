@@ -12,6 +12,7 @@ export interface Property {
   videoUrl?: string;
   aiSystemInstruction: string;
   aiTemperature: number;
+  listingType: 'sale' | 'rent' | 'hostel' | 'pg';
 }
 
 export interface Inquiry {

@@ -27,7 +27,7 @@ export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
   const hasVideo = property.videoUrl && property.videoUrl.trim() !== '';
   
   let videoEmbedUrl = '';
-  let videoType: 'youtube' | 'vimeo' | 'direct' | 'none' = 'none';
+  let videoType: 'youtube' | 'vimeo' | 'cloudinary' | 'direct' | 'none' = 'none';
 
   if (hasVideo) {
     if (property.videoUrl.includes('youtube.com/watch') || property.videoUrl.includes('youtu.be')) {
@@ -40,6 +40,9 @@ export const PropertyDetail: React.FC<Props> = ({ propertyId }) => {
       videoType = 'vimeo';
       const videoId = property.videoUrl.split('/').pop()?.split('?')[0];
       videoEmbedUrl = `https://player.vimeo.com/video/${videoId}`;
+    } else if (property.videoUrl.includes('cloudinary.com')) {
+      videoType = 'cloudinary';
+      videoEmbedUrl = property.videoUrl;
     } else {
       videoType = 'direct';
       videoEmbedUrl = property.videoUrl;

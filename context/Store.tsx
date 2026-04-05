@@ -8,6 +8,7 @@ import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndP
 interface Filters {
     searchTerm: string;
     maxPrice: number | null;
+    listingType: 'all' | 'sale' | 'rent';
 }
 
 interface StoreContextType {
@@ -50,7 +51,8 @@ const MOCK_PROPERTIES: Property[] = [
       imageUrl: 'https://picsum.photos/id/122/800/600',
       videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       aiSystemInstruction: 'You are an enthusiastic luxury agent. Focus on the sunset views and the high-tech smart features. Use emojis and sophisticated language.',
-      aiTemperature: 0.8
+      aiTemperature: 0.8,
+      listingType: 'sale'
     },
     {
       id: '2',
@@ -64,7 +66,8 @@ const MOCK_PROPERTIES: Property[] = [
       sqft: 850,
       imageUrl: 'https://picsum.photos/id/195/800/600',
       aiSystemInstruction: 'You are a sophisticated and eloquent real estate concierge. Your focus is on the luxurious features, breathtaking views, and architectural marvels of the property. Use vivid and evocative language to paint a picture of opulence and exclusivity.',
-      aiTemperature: 0.4
+      aiTemperature: 0.4,
+      listingType: 'rent'
     }
   ];
 
@@ -72,7 +75,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [view, setView] = useState<ViewState>({ name: 'USER_GALLERY' });
   const [properties, setProperties] = useState<Property[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [filters, setFilters] = useState<Filters>({ searchTerm: '', maxPrice: null });
+  const [filters, setFilters] = useState<Filters>({ searchTerm: '', maxPrice: null, listingType: 'all' });
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   
@@ -298,7 +301,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     const priceMatch = filters.maxPrice === null || p.price <= filters.maxPrice;
 
-    return searchTermMatch && priceMatch;
+    const listingTypeMatch = filters.listingType === 'all' || p.listingType === filters.listingType;
+
+    return searchTermMatch && priceMatch && listingTypeMatch;
   })
 
 
