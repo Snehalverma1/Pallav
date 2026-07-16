@@ -1,3 +1,4 @@
+
 export interface Property {
   id: string;
   userId?: string;
@@ -44,4 +45,5 @@ export type ViewState =
   | { name: 'ADMIN_LOGIN' }
   | { name: 'ADMIN_DASHBOARD' }
   | { name: 'ADMIN_EDIT'; propertyId: string | null }
-  | { name: 'INQUIRY_FORM'; propertyId?: string };
+  | { name: 'INQUIRY_FORM'; propertyId?: string }
+  | { name: 'TEMP_ADMIN' };

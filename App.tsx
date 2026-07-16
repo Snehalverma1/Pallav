@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { StoreProvider, useStore } from './context/Store';
 import { Layout } from './components/Layout';
@@ -9,6 +10,7 @@ import { AuthGate } from './pages/AuthGate';
 import { GlobalGuide } from './components/GlobalGuide';
 import { InquiryForm } from './pages/InquiryForm';
 import AdminAuth from './src/components/AdminAuth';
+import TemporaryAdmin from './pages/TemporaryAdmin';
 
 const isDemoMode = !import.meta.env.VITE_API_KEY || !import.meta.env.VITE_FIREBASE_API_KEY;
 
@@ -16,11 +18,12 @@ const AppContent: React.FC = () => {
   const { view, isAuthenticated, isAdmin, navigate, setIsDemoMode } = useStore();
 
   useEffect(() => {
-    if (isDemoMode) {
-      setIsDemoMode(true);
-      navigate({ name: 'ADMIN_DASHBOARD' });
-    }
+    navigate({ name: 'TEMP_ADMIN' });
   }, []);
+
+  if (view.name === 'TEMP_ADMIN') {
+    return <TemporaryAdmin />;
+  }
 
   if (view.name === 'ADMIN_AUTH') {
     return <AdminAuth />;
